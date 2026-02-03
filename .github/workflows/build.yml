@@ -55,7 +55,15 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity normal
+        run: dotnet test --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=TestResults.trx"
+
+      - name: Test Report
+        uses: dorny/test-reporter@v2
+        if: success() || failure()
+        with:
+          name: Test Results
+          path: "**/TestResults/*.trx"
+          reporter: dotnet-trx
 
       - name: Pack
         run: dotnet pack src/HttpFileParser/HttpFileParser.csproj --configuration Release --no-build --output ./artifacts
