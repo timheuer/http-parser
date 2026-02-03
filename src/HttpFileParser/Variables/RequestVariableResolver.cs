@@ -154,8 +154,7 @@ public sealed partial class RequestVariableResolver : IVariableResolver
 
             return result switch
             {
-                XPathNodeIterator iterator when iterator.MoveNext() =>
-                    iterator.Current?.Value,
+                XPathNodeIterator iterator => iterator.MoveNext() ? iterator.Current?.Value : null,
                 string s => s,
                 double d => d.ToString(),
                 bool b => b.ToString().ToLowerInvariant(),
