@@ -1,0 +1,76 @@
+### Sample .http File
+### Demonstrates various features of the HttpFileParser library
+
+# File-level variables
+@baseUrl = https://jsonplaceholder.typicode.com
+@userId = 1
+
+###
+
+### Get All Users
+# @name getAllUsers
+GET {{baseUrl}}/users
+Accept: application/json
+
+###
+
+### Get User by ID
+# @name getUser
+GET {{baseUrl}}/users/{{userId}}
+Accept: application/json
+
+###
+
+### Create a New Post
+# @name createPost
+POST {{baseUrl}}/posts
+Content-Type: application/json
+
+{
+  "title": "Sample Post from {{$datetime yyyy-MM-dd}}",
+  "body": "This post was created with HttpFileParser",
+  "userId": {{userId}}
+}
+
+###
+
+### Update Post (using dynamic variables)
+# @name updatePost
+# @no-redirect
+PUT {{baseUrl}}/posts/1
+Content-Type: application/json
+
+{
+  "id": 1,
+  "title": "Updated at {{$isoTimestamp}}",
+  "body": "Request ID: {{$guid}}",
+  "userId": {{userId}}
+}
+
+###
+
+### Delete Example
+# @name deletePost
+DELETE {{baseUrl}}/posts/1
+
+###
+
+### GraphQL Example
+# @name graphqlQuery
+POST {{baseUrl}}/graphql
+X-REQUEST-TYPE: GraphQL
+Content-Type: application/json
+
+{
+  "query": "query GetUser($id: ID!) { user(id: $id) { id name email } }",
+  "variables": { "id": "{{userId}}" }
+}
+
+###
+
+### Request with Query Parameters (multiline URL)
+# @name searchUsers
+GET {{baseUrl}}/users
+  ?_page=1
+  &_limit=5
+Accept: application/json

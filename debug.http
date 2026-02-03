@@ -1,0 +1,3 @@
+# @name myRequest
+# @no-redirect
+GET https://api.example.com/users

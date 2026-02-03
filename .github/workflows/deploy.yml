@@ -1,0 +1,53 @@
+name: Deploy to NuGet
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment: nuget
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Download Package Artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: nuget-package
+          path: ./artifacts
+
+      - name: Download Symbols Artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: nuget-symbols
+          path: ./artifacts
+        continue-on-error: true
+
+      - name: NuGet Login (Trusted Publishing)
+        uses: nuget/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to NuGet
+        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Deployment Summary
+        run: |
+          echo "## NuGet Package Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Package** | HttpFileParser |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | \`${{ needs.build.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **NuGet URL** | [nuget.org/packages/HttpFileParser/${{ needs.build.outputs.version }}](https://www.nuget.org/packages/HttpFileParser/${{ needs.build.outputs.version }}) |" >> $GITHUB_STEP_SUMMARY

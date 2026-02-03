@@ -1,0 +1,77 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:
+    outputs:
+      version:
+        description: "NuGet package version"
+        value: ${{ jobs.build.outputs.version }}
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install NBGV
+        run: dotnet tool install --global nbgv
+
+      - name: Get Version
+        id: nbgv
+        run: |
+          nbgv get-version
+          echo "version=$(nbgv get-version -v NuGetPackageVersion)" >> $GITHUB_OUTPUT
+          echo "simple_version=$(nbgv get-version -v SimpleVersion)" >> $GITHUB_OUTPUT
+          echo "git_commit_id=$(nbgv get-version -v GitCommitId)" >> $GITHUB_OUTPUT
+
+      - name: Version Summary
+        run: |
+          echo "## Build Version" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **NuGet Package Version** | \`${{ steps.nbgv.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Simple Version** | \`${{ steps.nbgv.outputs.simple_version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Git Commit** | \`${{ steps.nbgv.outputs.git_commit_id }}\` |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Pack
+        run: dotnet pack src/HttpFileParser/HttpFileParser.csproj --configuration Release --no-build --output ./artifacts
+
+      - name: Upload Package Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: nuget-package
+          path: ./artifacts/*.nupkg
+
+      - name: Upload Symbols Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: nuget-symbols
+          path: ./artifacts/*.snupkg
+          if-no-files-found: ignore
+
+    outputs:
+      version: ${{ steps.nbgv.outputs.version }}

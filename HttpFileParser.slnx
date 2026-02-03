@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/sample/">
+    <Project Path="sample/HttpFileParser.Sample.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/HttpFileParser/HttpFileParser.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HttpFileParser.Tests/HttpFileParser.Tests.csproj" />
+  </Folder>
+</Solution>
