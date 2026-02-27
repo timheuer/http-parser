@@ -77,7 +77,7 @@ public sealed partial class DynamicVariableResolver : IVariableResolver
     private string? ResolveRandomInt(string name)
     {
         // Format: $randomInt min max
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var parts = name.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 3)
         {
             return _random.Next().ToString();
@@ -138,7 +138,7 @@ public sealed partial class DynamicVariableResolver : IVariableResolver
     private static string? ResolveProcessEnv(string name)
     {
         // Format: $processEnv VAR_NAME
-        var parts = name.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var parts = name.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 2)
         {
             return null;
@@ -150,7 +150,7 @@ public sealed partial class DynamicVariableResolver : IVariableResolver
     private static string? ResolveDotEnv(string name)
     {
         // Format: $dotenv VAR_NAME
-        var parts = name.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var parts = name.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 2)
         {
             return null;
@@ -165,16 +165,16 @@ public sealed partial class DynamicVariableResolver : IVariableResolver
             foreach (var line in lines)
             {
                 var trimmed = line.Trim();
-                if (trimmed.StartsWith('#') || !trimmed.Contains('='))
+                if (trimmed.StartsWith("#", StringComparison.Ordinal) || !trimmed.Contains("="))
                 {
                     continue;
                 }
 
                 var equalsIndex = trimmed.IndexOf('=');
-                var key = trimmed[..equalsIndex].Trim();
+                var key = trimmed.Substring(0, equalsIndex).Trim();
                 if (string.Equals(key, varName, StringComparison.OrdinalIgnoreCase))
                 {
-                    return trimmed[(equalsIndex + 1)..].Trim().Trim('"', '\'');
+                    return trimmed.Substring(equalsIndex + 1).Trim().Trim('"', '\'');
                 }
             }
         }
@@ -182,6 +182,11 @@ public sealed partial class DynamicVariableResolver : IVariableResolver
         return null;
     }
 
+#if NET7_0_OR_GREATER
     [GeneratedRegex(@"\$(?:local)?[Dd]atetime\s+""?([^""\s]+)""?(?:\s+(-?\d+)\s+([yMwdhnms]+))?", RegexOptions.IgnoreCase)]
     private static partial Regex DatetimeFormatRegex();
+#else
+    private static readonly Regex _datetimeFormatRegex = new(@"\$(?:local)?[Dd]atetime\s+""?([^""\s]+)""?(?:\s+(-?\d+)\s+([yMwdhnms]+))?", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex DatetimeFormatRegex() => _datetimeFormatRegex;
+#endif
 }

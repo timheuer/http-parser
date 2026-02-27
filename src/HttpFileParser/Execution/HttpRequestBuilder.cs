@@ -198,12 +198,12 @@ public sealed class HttpRequestBuilder
     private static string? DetectContentType(string content)
     {
         var trimmed = content.TrimStart();
-        if (trimmed.StartsWith('{') || trimmed.StartsWith('['))
+        if (trimmed.StartsWith("{", StringComparison.Ordinal) || trimmed.StartsWith("[", StringComparison.Ordinal))
         {
             return "application/json";
         }
 
-        if (trimmed.StartsWith('<'))
+        if (trimmed.StartsWith("<", StringComparison.Ordinal))
         {
             if (trimmed.StartsWith("<?xml", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("<soap:", StringComparison.OrdinalIgnoreCase))
@@ -224,12 +224,12 @@ public sealed class HttpRequestBuilder
             return Encoding.UTF8;
         }
 
-        return encodingName.ToLowerInvariant() switch
+        return encodingName!.ToLowerInvariant() switch
         {
             "utf-8" or "utf8" => Encoding.UTF8,
             "utf-16" or "utf16" => Encoding.Unicode,
             "ascii" => Encoding.ASCII,
-            "latin1" or "iso-8859-1" => Encoding.Latin1,
+            "latin1" or "iso-8859-1" => Encoding.GetEncoding("iso-8859-1"),
             _ => Encoding.UTF8
         };
     }
@@ -241,7 +241,7 @@ public sealed class HttpRequestBuilder
             return null;
         }
 
-        var nameIndex = contentDisposition.IndexOf("name=\"", StringComparison.OrdinalIgnoreCase);
+        var nameIndex = contentDisposition!.IndexOf("name=\"", StringComparison.OrdinalIgnoreCase);
         if (nameIndex == -1)
         {
             return null;
@@ -254,7 +254,7 @@ public sealed class HttpRequestBuilder
             return null;
         }
 
-        return contentDisposition[nameIndex..endIndex];
+        return contentDisposition.Substring(nameIndex, endIndex - nameIndex);
     }
 
     private static string? ExtractDispositionFileName(string? contentDisposition)
@@ -264,7 +264,7 @@ public sealed class HttpRequestBuilder
             return null;
         }
 
-        var fileNameIndex = contentDisposition.IndexOf("filename=\"", StringComparison.OrdinalIgnoreCase);
+        var fileNameIndex = contentDisposition!.IndexOf("filename=\"", StringComparison.OrdinalIgnoreCase);
         if (fileNameIndex == -1)
         {
             return null;
@@ -277,6 +277,6 @@ public sealed class HttpRequestBuilder
             return null;
         }
 
-        return contentDisposition[fileNameIndex..endIndex];
+        return contentDisposition.Substring(fileNameIndex, endIndex - fileNameIndex);
     }
 }

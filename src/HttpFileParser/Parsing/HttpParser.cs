@@ -321,13 +321,13 @@ public sealed partial class HttpParser
         }
 
         var trimmed = token.Text.TrimStart();
-        return trimmed.StartsWith('?') || trimmed.StartsWith('&');
+        return trimmed.StartsWith("?", StringComparison.Ordinal) || trimmed.StartsWith("&", StringComparison.Ordinal);
     }
 
     private static (string? Method, string? Url, string? HttpVersion) ParseRequestLine(string text)
     {
         var line = text.Trim().TrimEnd('\r', '\n');
-        var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
         if (parts.Length < 2)
         {
@@ -339,14 +339,16 @@ public sealed partial class HttpParser
 
         // Check if last part is HTTP version
         var urlEndIndex = parts.Length;
-        if (parts.Length >= 3 && parts[^1].StartsWith("HTTP/", StringComparison.OrdinalIgnoreCase))
+        if (parts.Length >= 3 && parts[parts.Length - 1].StartsWith("HTTP/", StringComparison.OrdinalIgnoreCase))
         {
-            httpVersion = parts[^1];
+            httpVersion = parts[parts.Length - 1];
             urlEndIndex = parts.Length - 1;
         }
 
         // URL might contain spaces (though unusual), join remaining parts
-        var url = string.Join(" ", parts[1..urlEndIndex]);
+        var urlParts = new string[urlEndIndex - 1];
+        Array.Copy(parts, 1, urlParts, 0, urlEndIndex - 1);
+        var url = string.Join(" ", urlParts);
 
         return (method, url, httpVersion);
     }
@@ -361,8 +363,8 @@ public sealed partial class HttpParser
             return null;
         }
 
-        var name = text[..colonIndex].Trim();
-        var value = text[(colonIndex + 1)..].Trim();
+        var name = text.Substring(0, colonIndex).Trim();
+        var value = text.Substring(colonIndex + 1).Trim();
 
         return new HttpHeader(name, value, CreateSpan(token));
     }
@@ -429,7 +431,7 @@ public sealed partial class HttpParser
 
     private static bool IsFileReference(string text)
     {
-        if (!text.StartsWith('<'))
+        if (!text.StartsWith("<", StringComparison.Ordinal))
         {
             return false;
         }
@@ -457,9 +459,9 @@ public sealed partial class HttpParser
     {
         var text = token.Text.Trim().TrimEnd('\r', '\n');
         // Format: < path [encoding] or <@ path (with variable processing)
-        var processVariables = text.StartsWith("<@");
+        var processVariables = text.StartsWith("<@", StringComparison.Ordinal);
         var pathStart = processVariables ? 2 : 1;
-        var remaining = text[pathStart..].Trim();
+        var remaining = text.Substring(pathStart).Trim();
 
         string? encoding = null;
         var path = remaining;
@@ -468,12 +470,12 @@ public sealed partial class HttpParser
         var spaceIndex = remaining.LastIndexOf(' ');
         if (spaceIndex > 0)
         {
-            var possibleEncoding = remaining[(spaceIndex + 1)..];
+            var possibleEncoding = remaining.Substring(spaceIndex + 1);
             // Common encodings
             if (IsKnownEncoding(possibleEncoding))
             {
                 encoding = possibleEncoding;
-                path = remaining[..spaceIndex].Trim();
+                path = remaining.Substring(0, spaceIndex).Trim();
             }
         }
 
@@ -499,7 +501,7 @@ public sealed partial class HttpParser
         var delimiter = $"--{boundary}";
         var endDelimiter = $"--{boundary}--";
 
-        var parts = content.Split(delimiter, StringSplitOptions.RemoveEmptyEntries);
+        var parts = content.Split(new[] { delimiter }, StringSplitOptions.RemoveEmptyEntries);
 
         foreach (var part in parts)
         {
@@ -515,20 +517,21 @@ public sealed partial class HttpParser
             }
         }
 
+        var lastToken = bodyTokens[bodyTokens.Count - 1];
         var span = new SourceSpan(
             bodyTokens[0].Line,
             bodyTokens[0].Column,
-            bodyTokens[^1].Line,
-            bodyTokens[^1].Column + bodyTokens[^1].Text.TrimEnd('\r', '\n').Length,
+            lastToken.Line,
+            lastToken.Column + lastToken.Text.TrimEnd('\r', '\n').Length,
             bodyTokens[0].StartOffset,
-            bodyTokens[^1].EndOffset);
+            lastToken.EndOffset);
 
         return new MultipartBody(boundary, sections, span);
     }
 
     private MultipartSection? ParseMultipartSection(string content)
     {
-        var lines = content.Split(["\r\n", "\n"], StringSplitOptions.None);
+        var lines = content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
         var headers = new List<HttpHeader>();
         var bodyStartIndex = 0;
 
@@ -545,8 +548,8 @@ public sealed partial class HttpParser
             var colonIndex = line.IndexOf(':');
             if (colonIndex > 0)
             {
-                var name = line[..colonIndex].Trim();
-                var value = line[(colonIndex + 1)..].Trim();
+                var name = line.Substring(0, colonIndex).Trim();
+                var value = line.Substring(colonIndex + 1).Trim();
                 headers.Add(new HttpHeader(name, value, SourceSpan.Empty));
             }
         }
@@ -555,10 +558,12 @@ public sealed partial class HttpParser
         HttpRequestBody? body = null;
         if (bodyStartIndex < lines.Length)
         {
-            var bodyContent = string.Join("\n", lines[bodyStartIndex..]).TrimEnd('\r', '\n', '-');
+            var bodyLines = new string[lines.Length - bodyStartIndex];
+            Array.Copy(lines, bodyStartIndex, bodyLines, 0, lines.Length - bodyStartIndex);
+            var bodyContent = string.Join("\n", bodyLines).TrimEnd('\r', '\n', '-');
             if (!string.IsNullOrWhiteSpace(bodyContent))
             {
-                if (bodyContent.TrimStart().StartsWith('<'))
+                if (bodyContent.TrimStart().StartsWith("<", StringComparison.Ordinal))
                 {
                     var token = new Token(TokenType.BodyLine, bodyContent, 0, 0, 0, bodyContent.Length);
                     body = ParseFileReferenceBody(token);
@@ -577,13 +582,13 @@ public sealed partial class HttpParser
     {
         var text = token.Text.Trim().TrimEnd('\r', '\n');
         // Remove comment prefix
-        if (text.StartsWith("//"))
+        if (text.StartsWith("//", StringComparison.Ordinal))
         {
-            text = text[2..].TrimStart();
+            text = text.Substring(2).TrimStart();
         }
-        else if (text.StartsWith('#'))
+        else if (text.StartsWith("#", StringComparison.Ordinal))
         {
-            text = text[1..].TrimStart();
+            text = text.Substring(1).TrimStart();
         }
 
         return new Comment(text, CreateSpan(token));
@@ -599,30 +604,30 @@ public sealed partial class HttpParser
     {
         var text = token.Text.Trim().TrimEnd('\r', '\n');
         // Remove comment prefix first
-        if (text.StartsWith("//"))
+        if (text.StartsWith("//", StringComparison.Ordinal))
         {
-            text = text[2..].TrimStart();
+            text = text.Substring(2).TrimStart();
         }
-        else if (text.StartsWith('#'))
+        else if (text.StartsWith("#", StringComparison.Ordinal))
         {
-            text = text[1..].TrimStart();
+            text = text.Substring(1).TrimStart();
         }
 
         // Now parse @directive [value]
-        if (!text.StartsWith('@'))
+        if (!text.StartsWith("@", StringComparison.Ordinal))
         {
             return new HttpDirective(text, null, CreateSpan(token));
         }
 
-        text = text[1..]; // Remove @
+        text = text.Substring(1); // Remove @
         var spaceIndex = text.IndexOf(' ');
         if (spaceIndex <= 0)
         {
             return new HttpDirective(text, null, CreateSpan(token));
         }
 
-        var name = text[..spaceIndex];
-        var value = text[(spaceIndex + 1)..].Trim();
+        var name = text.Substring(0, spaceIndex);
+        var value = text.Substring(spaceIndex + 1).Trim();
 
         return new HttpDirective(name, value, CreateSpan(token));
     }
@@ -631,9 +636,9 @@ public sealed partial class HttpParser
     {
         var text = token.Text.Trim().TrimEnd('\r', '\n');
         // Format: @name = value
-        if (text.StartsWith('@'))
+        if (text.StartsWith("@", StringComparison.Ordinal))
         {
-            text = text[1..];
+            text = text.Substring(1);
         }
 
         var equalsIndex = text.IndexOf('=');
@@ -642,8 +647,8 @@ public sealed partial class HttpParser
             return new FileVariable(text, "", CreateSpan(token));
         }
 
-        var name = text[..equalsIndex].Trim();
-        var value = text[(equalsIndex + 1)..].Trim();
+        var name = text.Substring(0, equalsIndex).Trim();
+        var value = text.Substring(equalsIndex + 1).Trim();
 
         return new FileVariable(name, value, CreateSpan(token));
     }
@@ -651,9 +656,9 @@ public sealed partial class HttpParser
     private static string ExtractDelimiterComment(string text)
     {
         var trimmed = text.Trim().TrimEnd('\r', '\n');
-        if (trimmed.StartsWith("###"))
+        if (trimmed.StartsWith("###", StringComparison.Ordinal))
         {
-            return trimmed[3..].Trim();
+            return trimmed.Substring(3).Trim();
         }
 
         return "";
@@ -680,6 +685,11 @@ public sealed partial class HttpParser
     private void Advance() => _tokenIndex++;
     private bool IsAtEnd() => _tokenIndex >= _tokens.Count || _tokens[_tokenIndex].Type == TokenType.EOF;
 
+#if NET7_0_OR_GREATER
     [GeneratedRegex(@"boundary=([^;\s]+)", RegexOptions.IgnoreCase)]
     private static partial Regex BoundaryRegex();
+#else
+    private static readonly Regex _boundaryRegex = new(@"boundary=([^;\s]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex BoundaryRegex() => _boundaryRegex;
+#endif
 }

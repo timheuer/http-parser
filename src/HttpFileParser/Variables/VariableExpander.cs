@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Web;
 
 namespace HttpFileParser.Variables;
 
@@ -91,10 +90,10 @@ public sealed partial class VariableExpander
 
         // Check for percent-encoding prefix
         var percentEncode = false;
-        if (trimmed.StartsWith('%'))
+        if (trimmed.StartsWith("%", StringComparison.Ordinal))
         {
             percentEncode = true;
-            trimmed = trimmed[1..];
+            trimmed = trimmed.Substring(1);
         }
 
         // Resolve the variable
@@ -114,7 +113,7 @@ public sealed partial class VariableExpander
         // Apply percent-encoding if requested
         if (percentEncode)
         {
-            value = HttpUtility.UrlEncode(value);
+            value = Uri.EscapeDataString(value);
         }
 
         return (value, true);
@@ -131,14 +130,19 @@ public sealed partial class VariableExpander
         foreach (Match match in matches)
         {
             var varName = match.Groups[1].Value.Trim();
-            if (varName.StartsWith('%'))
+            if (varName.StartsWith("%", StringComparison.Ordinal))
             {
-                varName = varName[1..];
+                varName = varName.Substring(1);
             }
             yield return varName;
         }
     }
 
+#if NET7_0_OR_GREATER
     [GeneratedRegex(@"\{\{([^}]+)\}\}")]
     private static partial Regex VariablePattern();
+#else
+    private static readonly Regex _variablePattern = new(@"\{\{([^}]+)\}\}", RegexOptions.Compiled);
+    private static Regex VariablePattern() => _variablePattern;
+#endif
 }

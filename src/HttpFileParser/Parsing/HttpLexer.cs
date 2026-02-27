@@ -228,26 +228,26 @@ public sealed class HttpLexer
     private static bool IsDirectiveLine(string line)
     {
         var trimmed = line.TrimStart();
-        if (trimmed.StartsWith('#'))
+        if (trimmed.StartsWith("#", StringComparison.Ordinal))
         {
-            trimmed = trimmed[1..].TrimStart();
+            trimmed = trimmed.Substring(1).TrimStart();
         }
-        else if (trimmed.StartsWith("//"))
+        else if (trimmed.StartsWith("//", StringComparison.Ordinal))
         {
-            trimmed = trimmed[2..].TrimStart();
+            trimmed = trimmed.Substring(2).TrimStart();
         }
         else
         {
             return false;
         }
 
-        return trimmed.StartsWith('@');
+        return trimmed.StartsWith("@", StringComparison.Ordinal);
     }
 
     private static bool IsVariableDefinition(string line)
     {
         var trimmed = line.TrimStart();
-        if (!trimmed.StartsWith('@'))
+        if (!trimmed.StartsWith("@", StringComparison.Ordinal))
         {
             return false;
         }

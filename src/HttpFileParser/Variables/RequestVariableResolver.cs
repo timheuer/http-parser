@@ -66,24 +66,24 @@ public sealed partial class RequestVariableResolver : IVariableResolver
         }
 
         // Check if it's a JSONPath selector (starts with $)
-        if (selector.StartsWith('$'))
+        if (selector.StartsWith("$", StringComparison.Ordinal))
         {
             return ResolveJsonPath(response.Body, selector);
         }
 
         // Check if it's an XPath selector (starts with /)
-        if (selector.StartsWith('/'))
+        if (selector.StartsWith("/", StringComparison.Ordinal))
         {
             return ResolveXPath(response.Body, selector);
         }
 
         // Try to detect content type
-        if (response.ContentType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true)
+        if (response.ContentType?.IndexOf("json", StringComparison.OrdinalIgnoreCase) >= 0)
         {
             return ResolveJsonPath(response.Body, "$." + selector);
         }
 
-        if (response.ContentType?.Contains("xml", StringComparison.OrdinalIgnoreCase) == true)
+        if (response.ContentType?.IndexOf("xml", StringComparison.OrdinalIgnoreCase) >= 0)
         {
             return ResolveXPath(response.Body, selector);
         }
@@ -185,7 +185,13 @@ public sealed partial class RequestVariableResolver : IVariableResolver
         return null;
     }
 
+#if NET7_0_OR_GREATER
     // Pattern: requestName.response.body.selector or requestName.response.headers.headerName
     [GeneratedRegex(@"^([^.]+)\.response\.(body|headers)(?:\.(.+))?$", RegexOptions.IgnoreCase)]
     private static partial Regex RequestVariablePattern();
+#else
+    // Pattern: requestName.response.body.selector or requestName.response.headers.headerName
+    private static readonly Regex _requestVariablePattern = new(@"^([^.]+)\.response\.(body|headers)(?:\.(.+))?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex RequestVariablePattern() => _requestVariablePattern;
+#endif
 }

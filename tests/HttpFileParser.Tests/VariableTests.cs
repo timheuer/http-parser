@@ -355,8 +355,8 @@ public class VariableTests
 
         var expander = new VariableExpander(context);
 
-        Assert.Equal("a%2fb%2fc", expander.Expand("{{%path}}"));
-        Assert.Equal("key%3dvalue%26other%3dtest", expander.Expand("{{%query}}"));
+        Assert.Equal("a%2Fb%2Fc", expander.Expand("{{%path}}"));
+        Assert.Equal("key%3Dvalue%26other%3Dtest", expander.Expand("{{%query}}"));
     }
 
     [Fact]
@@ -435,7 +435,7 @@ public class VariableTests
         var expander = new VariableExpander(context);
         var result = expander.Expand("?q={{%query}}");
 
-        Assert.Equal("?q=hello+world", result);
+        Assert.Equal("?q=hello%20world", result);
     }
 
     [Fact]

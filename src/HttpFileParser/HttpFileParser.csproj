@@ -1,9 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
     <RootNamespace>HttpFileParser</RootNamespace>
     <AssemblyName>HttpFileParser</AssemblyName>
     <PackageId>HttpFileParser</PackageId>
